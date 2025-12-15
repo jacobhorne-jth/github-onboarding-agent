@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+streamlit
+python-dotenv
+pydantic
+
+gitpython
+
+pinecone
+langchain
+langgraph
+
+sentence-transformers
+torch
