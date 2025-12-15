@@ -47,3 +47,4 @@ def chat(req: ChatRequest):
         ))
 
     return ChatResponse(answer=state["answer"], sources=sources)
+#type
