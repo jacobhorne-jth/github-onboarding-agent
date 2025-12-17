@@ -12,3 +12,4 @@ langgraph
 
 sentence-transformers
 torch
+openai>=1.0.0
