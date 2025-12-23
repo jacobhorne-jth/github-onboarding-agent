@@ -1,7 +1,8 @@
 import streamlit as st
 import requests
+import os
 
-BACKEND = "http://127.0.0.1:8000"
+BACKEND = st.secrets.get("BACKEND_URL", os.getenv("BACKEND_URL", "http://127.0.0.1:8000"))
 
 st.set_page_config(page_title="GitHub Onboarding Agent", layout="wide")
 st.title("GitHub Onboarding Agent")
@@ -49,9 +50,16 @@ with st.sidebar:
                     )
                 if r.ok:
                     data = r.json()
-                    set_namespace(data["namespace"])
-                    st.success(f"Indexed {data.get('files_indexed')} chunks")
-                    st.caption(f"Repo URL: {data.get('repo_url')}")
+
+
+                    st.session_state.namespace = data["namespace"]
+                    st.session_state.messages = []  # reset chat when switching repos
+
+                    files_indexed = data.get("files_indexed")
+                    if files_indexed is not None:
+                        st.success(f"Indexed! {files_indexed} chunks → namespace = {st.session_state.namespace}")
+                    else:
+                        st.success(f"Indexed! namespace = {st.session_state.namespace}")
                 else:
                     st.error(r.text)
             except requests.RequestException as e:
