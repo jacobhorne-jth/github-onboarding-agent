@@ -6,9 +6,6 @@ BACKEND = "http://127.0.0.1:8000"
 st.set_page_config(page_title="GitHub Onboarding Agent", layout="wide")
 st.title("GitHub Onboarding Agent")
 
-# -----------------------
-# Session state
-# -----------------------
 if "namespace" not in st.session_state:
     st.session_state.namespace = None
 if "messages" not in st.session_state:
@@ -16,25 +13,16 @@ if "messages" not in st.session_state:
 if "ingesting" not in st.session_state:
     st.session_state.ingesting = False
 if "namespaces" not in st.session_state:
-    # simple history of namespaces you've ingested this session
     st.session_state.namespaces = []
 
-
 def set_namespace(new_ns: str):
-    """Set active namespace; clear chat if changing repos."""
-    old_ns = st.session_state.namespace
-    if old_ns and old_ns != new_ns:
-        st.session_state.messages = []  # prevent cross-repo mixing
+    old = st.session_state.namespace
+    if old and old != new_ns:
+        st.session_state.messages = []
     st.session_state.namespace = new_ns
-
-    # track history
     if new_ns and new_ns not in st.session_state.namespaces:
         st.session_state.namespaces.insert(0, new_ns)
 
-
-# -----------------------
-# Sidebar: Ingest + controls
-# -----------------------
 with st.sidebar:
     st.header("Index a Repo")
     repo_url = st.text_input("GitHub repo URL", placeholder="https://github.com/user/repo")
@@ -45,31 +33,25 @@ with st.sidebar:
 
     if clear_clicked:
         st.session_state.messages = []
-        st.toast("Chat cleared.", icon="🧹")
+        st.toast("Chat cleared.", icon="✅")
 
     if ingest_clicked:
         if not repo_url or not repo_url.strip():
-            st.error("Please paste a GitHub repo URL first.")
+            st.error("Paste a GitHub repo root URL first.")
         else:
             st.session_state.ingesting = True
             try:
-                with st.spinner("Ingesting repo (clone → chunk → embed → upsert)…"):
+                with st.spinner("Ingesting (clone → chunk → embed → upsert)…"):
                     r = requests.post(
                         f"{BACKEND}/ingest",
                         json={"repo_url": repo_url.strip()},
-                        timeout=600,
+                        timeout=900,
                     )
-
                 if r.ok:
                     data = r.json()
-                    new_ns = data["namespace"]
-                    set_namespace(new_ns)
-
-                    files_indexed = data.get("files_indexed")
-                    if files_indexed is not None:
-                        st.success(f"Indexed! {files_indexed} chunks → namespace = {st.session_state.namespace}")
-                    else:
-                        st.success(f"Indexed! namespace = {st.session_state.namespace}")
+                    set_namespace(data["namespace"])
+                    st.success(f"Indexed {data.get('files_indexed')} chunks")
+                    st.caption(f"Repo URL: {data.get('repo_url')}")
                 else:
                     st.error(r.text)
             except requests.RequestException as e:
@@ -77,7 +59,6 @@ with st.sidebar:
             finally:
                 st.session_state.ingesting = False
 
-    # Optional: switch between previously ingested namespaces
     if st.session_state.namespaces:
         st.divider()
         st.subheader("Switch repo")
@@ -90,15 +71,12 @@ with st.sidebar:
         )
         if choice and choice != st.session_state.namespace:
             set_namespace(choice)
-            st.toast(f"Switched to {choice}", icon="🔁")
+            st.toast("Switched repository.", icon="✅")
 
     st.divider()
-    st.caption("Backend: " + BACKEND)
-    st.caption("Current namespace: " + (st.session_state.namespace or "None"))
+    st.caption(f"Backend: {BACKEND}")
+    st.caption(f"Active namespace: {st.session_state.namespace or 'None'}")
 
-# -----------------------
-# Main: Chat
-# -----------------------
 st.subheader("Chatbot")
 st.caption(f"Active namespace: {st.session_state.namespace or 'None'}")
 
@@ -106,19 +84,27 @@ if not st.session_state.namespace:
     st.info("Ingest a repo first (left sidebar).")
     st.stop()
 
-# Render chat history
-for role, content in st.session_state.messages:
+# Render history (store dicts so we can show sources)
+for msg in st.session_state.messages:
+    role = msg["role"]
+    content = msg["content"]
     with st.chat_message(role):
         st.write(content)
+        if role == "assistant" and msg.get("sources"):
+            with st.expander("Sources"):
+                for s in msg["sources"]:
+                    st.write(f"{s['path']} (lines {s['start_line']}-{s['end_line']})")
+                    if s.get("snippet"):
+                        st.code(s["snippet"])
 
 prompt = st.chat_input("Ask about the repo…")
 if prompt:
-    st.session_state.messages.append(("user", prompt))
+    st.session_state.messages.append({"role": "user", "content": prompt})
     with st.chat_message("user"):
         st.write(prompt)
 
     try:
-        with st.spinner("Thinking…"):
+        with st.spinner("Retrieving…"):
             r = requests.post(
                 f"{BACKEND}/chat",
                 json={
@@ -132,9 +118,17 @@ if prompt:
         if r.ok:
             payload = r.json()
             ans = payload.get("answer", "")
-            st.session_state.messages.append(("assistant", ans))
+            sources = payload.get("sources", [])
+            st.session_state.messages.append({"role": "assistant", "content": ans, "sources": sources})
+
             with st.chat_message("assistant"):
                 st.write(ans)
+                if sources:
+                    with st.expander("Sources"):
+                        for s in sources:
+                            st.write(f"{s['path']} (lines {s['start_line']}-{s['end_line']})")
+                            if s.get("snippet"):
+                                st.code(s["snippet"])
         else:
             st.error(r.text)
     except requests.RequestException as e:

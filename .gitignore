@@ -1,3 +1,18 @@
+# env
 .env
 .env.*
+
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# local repos cache
 .repos/
+
+# streamlit
+.streamlit/
+
+# misc
+.DS_Store

@@ -9,6 +9,7 @@ class IngestResponse(BaseModel):
     repo_id: str
     namespace: str
     files_indexed: int
+    repo_url: str
 
 class ChatRequest(BaseModel):
     namespace: str

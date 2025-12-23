@@ -1,36 +1,42 @@
 from dataclasses import dataclass
-from typing import List, Dict
-import os
+from typing import Dict, List
 
 @dataclass
 class Chunk:
     text: str
     meta: Dict
 
-def chunk_text(text: str, max_chars: int = 3500, overlap: int = 400) -> List[str]:
-    # simple deterministic chunker (upgrade to structure-aware later)
-    chunks = []
-    i = 0
-    while i < len(text):
-        j = min(len(text), i + max_chars)
-        chunks.append(text[i:j])
-        i = max(0, j - overlap)
-        if j == len(text):
-            break
-    return chunks
+def make_chunks(path: str, text: str, chunk_lines: int = 60, overlap: int = 10) -> List[Chunk]:
+    """
+    Split by lines with overlap so citations have real ranges.
+    """
+    lines = text.splitlines()
+    out: List[Chunk] = []
 
-def make_chunks(path: str, text: str) -> List[Chunk]:
-    rel = path.replace("\\", "/")
-    parts = chunk_text(text)
-    out = []
-    for idx, p in enumerate(parts):
+    if not lines:
+        return out
+
+    step = max(1, chunk_lines - overlap)
+    chunk_index = 0
+
+    for start in range(0, len(lines), step):
+        end = min(len(lines), start + chunk_lines)
+        chunk_text = "\n".join(lines[start:end]).strip()
+        if not chunk_text:
+            continue
+
         out.append(Chunk(
-            text=p,
+            text=chunk_text,
             meta={
-                "path": rel,
-                "chunk_index": idx,
-                "start_line": 1,   # placeholders (line mapping later)
-                "end_line": 1
+                "path": path,
+                "chunk_index": chunk_index,
+                "start_line": start + 1,
+                "end_line": end,
             }
         ))
+        chunk_index += 1
+
+        if end >= len(lines):
+            break
+
     return out

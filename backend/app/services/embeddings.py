@@ -5,5 +5,7 @@ class HFEmbedder:
         self.model = SentenceTransformer(model_name)
 
     def embed_batch(self, texts: list[str]) -> list[list[float]]:
-        vecs = self.model.encode(texts, show_progress_bar=False, normalize_embeddings=True)
-        return [v.tolist() for v in vecs]
+        # normalize
+        texts = [t if isinstance(t, str) else "" for t in texts]
+        vecs = self.model.encode(texts, normalize_embeddings=True)
+        return vecs.tolist()

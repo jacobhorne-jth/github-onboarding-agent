@@ -1,15 +1,16 @@
-fastapi
-uvicorn[standard]
-streamlit
-python-dotenv
-pydantic
+fastapi>=0.110.0
+uvicorn[standard]>=0.27.0
+streamlit>=1.35.0
 
-gitpython
+pydantic>=2.6.0
+pydantic-settings>=2.2.0
+python-dotenv>=1.0.1
 
-pinecone
-langchain
-langgraph
+gitpython>=3.1.43
+pinecone>=5.0.0
 
-sentence-transformers
-torch
-openai>=1.0.0
+sentence-transformers>=3.0.1
+torch>=2.2.0
+
+langgraph>=0.2.0
+requests>=2.31.0
