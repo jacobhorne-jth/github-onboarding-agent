@@ -8,7 +8,9 @@ The system clones a repository, parses and chunks source files, embeds them into
 
 ---
 ## Images
-
+![Image0](images/goa_image_0.png)
+![Image1](images/goa_image_1.png)
+![Image2](images/goa_image_2.png)
 
 ---
 
